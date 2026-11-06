@@ -57,6 +57,18 @@ const Tool:React.FC<{s:Slide;handle:string;index:number}> = ({s,handle,index}) =
         <div style={{fontSize:67,lineHeight:1.18,fontWeight:900,color:WHITE}}>{s.headline}</div>
         {s.emphasis?<div style={{fontSize:55,lineHeight:1.2,fontWeight:800,color:accent,marginTop:12}}>{s.emphasis}</div>:null}
         {s.body?<div style={{fontSize:35,lineHeight:1.48,color:MUTED,marginTop:34}}>{s.body}</div>:null}
+        {s.demoLabel || s.demoPrompt || s.demoResult ? <div style={{marginTop:42,borderRadius:24,overflow:"hidden",border:"1px solid rgba(53,217,242,.3)",background:"#0A1220"}}>
+          <div style={{padding:"15px 22px",display:"flex",alignItems:"center",gap:10,background:"#142239",color:CYAN,fontSize:21,fontWeight:900,letterSpacing:2}}>
+            <span style={{width:12,height:12,borderRadius:99,background:"#55D69E"}}/> {s.demoLabel || "QUICK DEMO"}
+          </div>
+          <div style={{padding:"22px 24px"}}>
+            <div style={{fontSize:20,color:CYAN,fontWeight:900,letterSpacing:1,marginBottom:9}}>TRY THIS</div>
+            <div style={{fontSize:27,lineHeight:1.35,color:WHITE}}>{s.demoPrompt || "Explore a practical example"}</div>
+            <div style={{height:1,background:"rgba(255,255,255,.12)",margin:"19px 0"}}/>
+            <div style={{fontSize:20,color:VIOLET,fontWeight:900,letterSpacing:1,marginBottom:9}}>EXAMPLE OUTPUT</div>
+            <div style={{fontSize:26,lineHeight:1.4,color:MUTED}}>{s.demoResult || "An illustrative result"}</div>
+          </div>
+        </div>:null}
       </div>
       <div style={{display:"flex",gap:10,marginTop:35}}>
         {Array.from({length:5},(_,i)=><div key={i} style={{height:7,flex:1,borderRadius:8,background:i<(s.n||index)?CYAN:"rgba(255,255,255,.16)"}}/>)}
