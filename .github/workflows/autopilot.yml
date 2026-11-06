@@ -69,7 +69,7 @@ jobs:
             if(!Array.isArray(d.slides)||d.slides.length!==7) throw new Error('Expected 7 slides '+input);
             if(d.slides[0].kind!=='hook'||d.slides[6].kind!=='cta'||d.slides.slice(1,6).some(s=>s.kind!=='tool'||!s.demoPrompt||!s.demoResult)) throw new Error('Invalid slide structure '+input);
             for(const s of d.slides) if(s.kind==='tool'&&fs.existsSync('remotion/public/'+map[s.n])) s.demoVideo=map[s.n];
-            d.audioFile='audio/mix.wav';
+            d.audioFile=output.includes('english')?'audio/english-mix.wav':'audio/hindi-mix.wav';
             fs.mkdirSync('remotion/public/audio',{recursive:true});
             fs.mkdirSync('remotion/out',{recursive:true});
             fs.writeFileSync(output,JSON.stringify(d,null,2));
