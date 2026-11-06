@@ -57,6 +57,23 @@ jobs:
             if (!Array.isArray(data.slides) || data.slides.length !== 7) throw new Error('Expected 7 slides: ' + input);
             const kinds = data.slides.map(s => s.kind);
             if (kinds[0] !== 'hook' || kinds[6] !== 'cta' || kinds.slice(1,6).some(k => k !== 'tool')) throw new Error('Invalid slide order: ' + input);
+            // Attach real product footage when a recording is present in the repo.
+            // Expected files: remotion/public/demos/chatgpt.mp4, perplexity.mp4,
+            // canva-ai.mp4, gamma.mp4, notebooklm.mp4. Missing footage is
+            // intentionally rendered as a clearly labelled placeholder.
+            const demoFiles = {
+              1: 'demos/chatgpt.mp4',
+              2: 'demos/perplexity.mp4',
+              3: 'demos/canva-ai.mp4',
+              4: 'demos/gamma.mp4',
+              5: 'demos/notebooklm.mp4'
+            };
+            for (const slide of data.slides) {
+              if (slide.kind === 'tool' && demoFiles[slide.n]) {
+                const candidate = demoFiles[slide.n];
+                if (fs.existsSync('remotion/public/' + candidate)) slide.demoVideo = candidate;
+              }
+            }
             data.audioFile = output.includes('english') ? 'english-voice.wav' : 'hindi-voice.wav';
             fs.writeFileSync(output, JSON.stringify(data, null, 2));
           }
