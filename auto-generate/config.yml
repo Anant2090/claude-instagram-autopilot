@@ -1,20 +1,35 @@
-# Your brand — Claude reads this to generate reels in YOUR voice.
-niche: "AI + Instagram lead-gen for founders"
+
+# Instagram Autopilot Configuration
+# AI-powered faceless Instagram content generation
+
+niche: "AI tools, automation, technology and productivity"
 
 brand:
-  handle: "@yourbusiness"
-  voice: "clear, confident, practical — no hype-spam. Teach something every beat."
+  handle: "@YOUR_INSTAGRAM_USERNAME"
+  voice: "Engaging, simple, confident, educational and practical. Use powerful hooks, short sentences and actionable advice. Avoid hype and fake claims."
   pillars:
-    - "AI tools that save founders hours"
-    - "faceless content systems"
-    - "lead-gen on autopilot"
+    - "Best free AI tools and websites"
+    - "AI tools that save time and money"
+    - "ChatGPT tips and tricks"
+    - "AI automation tutorials"
+    - "Latest artificial intelligence developments"
+    - "AI tools for students and professionals"
+    - "Practical business automation"
+    - "Underrated AI websites"
 
 cta:
-  keyword: "AUTOMATE"          # the comment word that triggers the DM
-  deliverable: "the 5-tool setup guide (this repo)"
+  keyword: "AI"
+  deliverable: "Free AI tools collection and automation guide"
 
 cadence:
   timezone: "Asia/Kolkata"
-  slots_per_day: 1             # bump once you trust it
+  slots_per_day: 1
 
-# Honesty rule: every stat shown on screen must be real/defensible. Never fabricate numbers.
+# Content requirements:
+# Create original, educational and engaging content.
+# Use strong hooks in the first 3 seconds.
+# Create vertical 9:16 Instagram Reels.
+# Keep videos concise and visually engaging.
+# Include captions, subtitles and a clear CTA.
+# Never invent statistics, facts or results.
+# Require human approval before publishing.
