@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Cartesia narration with word timestamps, adapted from the second repo's audio workflow."""
-import argparse, base64, json, os, urllib.request, wave
+import argparse, base64, json, os, urllib.error, urllib.request, wave
 from pathlib import Path
 
 def main():
@@ -17,7 +17,14 @@ def main():
     req=urllib.request.Request("https://api.cartesia.ai/tts/sse",data=json.dumps(body).encode(),
         headers={"X-API-Key":key,"Cartesia-Version":"2024-11-13","Content-Type":"application/json"})
     pcm=bytearray(); words=[]
-    with urllib.request.urlopen(req,timeout=180) as res:
+    try:
+        response=urllib.request.urlopen(req,timeout=180)
+    except urllib.error.HTTPError as e:
+        # Print the provider's response body, but never print request headers or secrets.
+        details=e.read().decode("utf-8",errors="replace")
+        print(f"Cartesia HTTP {e.code} response: {details}")
+        raise
+    with response as res:
         for raw in res:
             line=raw.decode("utf-8").strip()
             if not line.startswith("data:"): continue
@@ -26,6 +33,8 @@ def main():
             elif event.get("type")=="timestamps":
                 ts=event["word_timestamps"]
                 words=[{"word":w,"start":float(s),"end":float(e)} for w,s,e in zip(ts["words"],ts["start"],ts["end"])]
+    if not pcm:
+        raise RuntimeError("Cartesia returned no audio data.")
     out=Path(a.output); out.parent.mkdir(parents=True,exist_ok=True)
     with wave.open(str(out),"wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100); w.writeframes(bytes(pcm))
