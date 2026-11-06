@@ -1,5 +1,4 @@
-
-name: Generate English and Hindi Reels
+name: Generate English and Hindi Reels with Voice
 
 on:
   workflow_dispatch:
@@ -10,10 +9,11 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 35
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
+      CARTESIA_VOICE_ID: ${{ secrets.CARTESIA_VOICE_ID }}
 
     steps:
       - name: Checkout repository
@@ -24,152 +24,121 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Check required secrets
+        run: |
+          test -n "$ANTHROPIC_API_KEY" || (echo "Missing ANTHROPIC_API_KEY secret" && exit 1)
+          test -n "$CARTESIA_API_KEY" || (echo "Missing CARTESIA_API_KEY secret" && exit 1)
+          test -n "$CARTESIA_VOICE_ID" || (echo "Missing CARTESIA_VOICE_ID secret" && exit 1)
+
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Generate English Reel
+      - name: Generate English Reel script
         run: |
-          PROMPT=$(cat <<'EOF'
-          Read auto-generate/config.yml for the brand voice and niche.
-          Create an original Instagram Reel in ENGLISH for @aiforall.daily.
-          Topic: 5 useful AI websites: ChatGPT, Perplexity, Canva AI, Gamma,
-          and NotebookLM.
+          claude -p 'Read auto-generate/config.yml. Create an original English Instagram Reel for @aiforall.daily about ChatGPT, Perplexity, Canva AI, Gamma, and NotebookLM. Return ONLY JSON with this shape:
+          {"handle":"@aiforall.daily","narration":"A concise natural voiceover script, about 45 to 55 spoken words.","slides":[{"kind":"hook","tag":"...","headline":"..."},{"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"..."},{"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"..."},{"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"..."},{"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"..."},{"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"..."},{"kind":"cta","emphasis":"FOLLOW","body":"..."}]}. Exactly 7 slides in this order. Short on-screen text. Accurate claims only. Narration must speak all five tools and end with a follow CTA. No Markdown.' --output-format text --dangerously-skip-permissions > /tmp/english-response.txt
 
-          Return ONLY valid JSON, with this exact structure:
-          {
-            "handle": "@aiforall.daily",
-            "slides": [
-              {"kind":"hook","tag":"...","headline":"..."},
-              {"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"cta","emphasis":"...","body":"..."}
-            ]
-          }
-
-          Rules:
-          - Exactly 7 slides in the order shown.
-          - Short, readable text suitable for a vertical Reel.
-          - Explain each tool accurately; do not invent features or pricing.
-          - Strong opening hook and clear follow CTA.
-          - No Markdown fences or extra text.
-          EOF
-          )
-
-          claude -p "$PROMPT" --output-format text \
-            --dangerously-skip-permissions \
-            > /tmp/english-response.txt
-
-      - name: Generate Hindi Reel
+      - name: Generate Hindi Reel script
         run: |
-          PROMPT=$(cat <<'EOF'
-          Read auto-generate/config.yml for the brand voice and niche.
-          Create an original Instagram Reel in HINDI for @aiforall.daily.
-          Topic: 5 useful AI websites: ChatGPT, Perplexity, Canva AI, Gamma,
-          and NotebookLM.
+          claude -p 'Read auto-generate/config.yml. Create an original natural Hindi Instagram Reel for @aiforall.daily about ChatGPT, Perplexity, Canva AI, Gamma, and NotebookLM. Return ONLY JSON with this shape:
+          {"handle":"@aiforall.daily","narration":"पूरा नैचुरल हिंदी वॉइसओवर, लगभग 45 से 55 बोले गए शब्द।","slides":[{"kind":"hook","tag":"...","headline":"..."},{"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"..."},{"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"..."},{"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"..."},{"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"..."},{"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"..."},{"kind":"cta","emphasis":"FOLLOW","body":"..."}]}. Exactly 7 slides in this order. Spoken narration must be natural Hindi in Devanagari, keep product names in English, explain all five tools accurately, and end with a follow CTA. No Markdown.' --output-format text --dangerously-skip-permissions > /tmp/hindi-response.txt
 
-          Return ONLY valid JSON, with this exact structure:
-          {
-            "handle": "@aiforall.daily",
-            "slides": [
-              {"kind":"hook","tag":"...","headline":"..."},
-              {"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"..."},
-              {"kind":"cta","emphasis":"...","body":"..."}
-            ]
-          }
-
-          Rules:
-          - Exactly 7 slides in the order shown.
-          - Write all spoken-style text in natural Hindi using Devanagari.
-          - Keep product names such as ChatGPT and Perplexity in English.
-          - Short, readable text suitable for a vertical Reel.
-          - Explain each tool accurately; do not invent features or pricing.
-          - Strong opening hook and clear follow CTA.
-          - No Markdown fences or extra text.
-          EOF
-          )
-
-          claude -p "$PROMPT" --output-format text \
-            --dangerously-skip-permissions \
-            > /tmp/hindi-response.txt
-
-      - name: Validate both Reel scripts
+      - name: Validate generated scripts
         run: |
           node <<'NODE'
           const fs = require('fs');
-
-          function parseAndValidate(input, output) {
+          function parse(input, output) {
             const raw = fs.readFileSync(input, 'utf8');
-            const start = raw.indexOf('{');
-            const end = raw.lastIndexOf('}');
-
-            if (start < 0 || end <= start) {
-              throw new Error(`No JSON found in ${input}`);
-            }
-
+            const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
+            if (start < 0 || end <= start) throw new Error('No JSON in ' + input);
             const data = JSON.parse(raw.slice(start, end + 1));
-
-            if (data.handle !== '@aiforall.daily') {
-              throw new Error(`Incorrect handle in ${input}`);
-            }
-
-            if (!Array.isArray(data.slides) || data.slides.length !== 7) {
-              throw new Error(`Expected exactly 7 slides in ${input}`);
-            }
-
-            const kinds = data.slides.map(slide => slide.kind);
-            if (kinds[0] !== 'hook' || kinds[6] !== 'cta') {
-              throw new Error(`Invalid first or last slide in ${input}`);
-            }
-
-            if (kinds.slice(1, 6).some(kind => kind !== 'tool')) {
-              throw new Error(`Expected five tool slides in ${input}`);
-            }
-
-            for (const slide of data.slides) {
-              for (const field of ['headline', 'emphasis', 'body']) {
-                if (field in slide && typeof slide[field] !== 'string') {
-                  throw new Error(`Invalid ${field} in ${input}`);
-                }
-              }
-            }
-
+            if (data.handle !== '@aiforall.daily') throw new Error('Wrong handle: ' + input);
+            if (typeof data.narration !== 'string' || data.narration.trim().length < 40) throw new Error('Missing narration: ' + input);
+            if (!Array.isArray(data.slides) || data.slides.length !== 7) throw new Error('Expected 7 slides: ' + input);
+            const kinds = data.slides.map(s => s.kind);
+            if (kinds[0] !== 'hook' || kinds[6] !== 'cta' || kinds.slice(1,6).some(k => k !== 'tool')) throw new Error('Invalid slide order: ' + input);
+            data.audioFile = output.includes('english') ? 'english-voice.wav' : 'hindi-voice.wav';
             fs.writeFileSync(output, JSON.stringify(data, null, 2));
-            console.log(`Validated ${output}`);
           }
-
-          fs.mkdirSync('remotion/out', { recursive: true });
-          parseAndValidate('/tmp/english-response.txt',
-            'remotion/english-carousel.json');
-          parseAndValidate('/tmp/hindi-response.txt',
-            'remotion/hindi-carousel.json');
+          fs.mkdirSync('remotion/public', {recursive:true});
+          fs.mkdirSync('remotion/out', {recursive:true});
+          parse('/tmp/english-response.txt','remotion/english-carousel.json');
+          parse('/tmp/hindi-response.txt','remotion/hindi-carousel.json');
           NODE
 
       - name: Install Remotion dependencies
         working-directory: remotion
         run: npm install --no-audit --no-fund
 
-      - name: Render English Reel
+      - name: Generate English voiceover with Cartesia
         working-directory: remotion
         run: |
-          npx remotion render src/index.tsx Reel \
-            out/english-reel.mp4 \
-            --props=./english-carousel.json
+          node <<'NODE'
+          const fs = require('fs');
+          async function main() {
+            const data = JSON.parse(fs.readFileSync('english-carousel.json','utf8'));
+            const response = await fetch('https://api.cartesia.ai/tts/bytes', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + process.env.CARTESIA_API_KEY,
+                'Cartesia-Version': '2026-08-14',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model_id: 'sonic-3.6',
+                transcript: data.narration,
+                voice: process.env.CARTESIA_VOICE_ID,
+                language: 'en',
+                output_format: {container:'wav', encoding:'pcm_s16le', sample_rate:44100},
+                normalization: 'auto',
+                generation_config: {speed:1, volume:1}
+              })
+            });
+            if (!response.ok) throw new Error('Cartesia English TTS failed (' + response.status + '): ' + await response.text());
+            fs.writeFileSync('public/english-voice.wav', Buffer.from(await response.arrayBuffer()));
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          NODE
 
-      - name: Render Hindi Reel
+      - name: Generate Hindi voiceover with Cartesia
         working-directory: remotion
         run: |
-          npx remotion render src/index.tsx Reel \
-            out/hindi-reel.mp4 \
-            --props=./hindi-carousel.json
+          node <<'NODE'
+          const fs = require('fs');
+          async function main() {
+            const data = JSON.parse(fs.readFileSync('hindi-carousel.json','utf8'));
+            const response = await fetch('https://api.cartesia.ai/tts/bytes', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + process.env.CARTESIA_API_KEY,
+                'Cartesia-Version': '2026-08-14',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model_id: 'sonic-3.6',
+                transcript: data.narration,
+                voice: process.env.CARTESIA_VOICE_ID,
+                language: 'hi',
+                output_format: {container:'wav', encoding:'pcm_s16le', sample_rate:44100},
+                normalization: 'auto',
+                generation_config: {speed:1, volume:1}
+              })
+            });
+            if (!response.ok) throw new Error('Cartesia Hindi TTS failed (' + response.status + '): ' + await response.text());
+            fs.writeFileSync('public/hindi-voice.wav', Buffer.from(await response.arrayBuffer()));
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          NODE
 
-      - name: Upload both Reels
+      - name: Render English Reel with voiceover
+        working-directory: remotion
+        run: npx remotion render src/index.tsx Reel out/english-reel.mp4 --props=./english-carousel.json
+
+      - name: Render Hindi Reel with voiceover
+        working-directory: remotion
+        run: npx remotion render src/index.tsx Reel out/hindi-reel.mp4 --props=./hindi-carousel.json
+
+      - name: Upload both narrated Reels
         uses: actions/upload-artifact@v4
         with:
           name: ai-for-all-english-and-hindi-reels
