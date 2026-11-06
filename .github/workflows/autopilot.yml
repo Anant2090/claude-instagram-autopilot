@@ -1,5 +1,5 @@
 
-name: Instagram Reel Generator
+name: Generate English and Hindi Reels
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -27,95 +27,154 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Generate Reel content
+      - name: Generate English Reel
         run: |
-          claude -p "Read auto-generate/config.yml and create an original Instagram Reel for my niche.
+          PROMPT=$(cat <<'EOF'
+          Read auto-generate/config.yml for the brand voice and niche.
+          Create an original Instagram Reel in ENGLISH for @aiforall.daily.
+          Topic: 5 useful AI websites: ChatGPT, Perplexity, Canva AI, Gamma,
+          and NotebookLM.
 
-          Return ONLY valid JSON matching this exact structure:
+          Return ONLY valid JSON, with this exact structure:
           {
-            \"handle\": \"@yourbusiness\",
-            \"slides\": [
-              {\"kind\":\"hook\",\"tag\":\"AI TOOLS\",\"headline\":\"Your opening hook\"},
-              {\"kind\":\"tool\",\"n\":1,\"headline\":\"Tool name\",\"emphasis\":\"Key benefit\",\"body\":\"Short explanation\"},
-              {\"kind\":\"tool\",\"n\":2,\"headline\":\"Another tool\",\"emphasis\":\"Key benefit\",\"body\":\"Short explanation\"},
-              {\"kind\":\"tool\",\"n\":3,\"headline\":\"Practical tip\",\"emphasis\":\"Key benefit\",\"body\":\"Short explanation\"},
-              {\"kind\":\"cta\",\"emphasis\":\"AI\",\"body\":\"Follow for more AI tips\"}
+            "handle": "@aiforall.daily",
+            "slides": [
+              {"kind":"hook","tag":"...","headline":"..."},
+              {"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"cta","emphasis":"...","body":"..."}
             ]
           }
 
-          Requirements:
-          - Create 5 to 7 slides.
-          - First slide must be hook.
-          - Last slide must be cta.
-          - Other slides must be tool.
-          - Use the niche and brand voice from config.yml.
-          - Use short, engaging and educational text.
-          - Do not invent statistics or facts.
-          - Return JSON only, without Markdown fences." \
-          --output-format text \
-          --dangerously-skip-permissions \
-          > /tmp/reel-response.txt
+          Rules:
+          - Exactly 7 slides in the order shown.
+          - Short, readable text suitable for a vertical Reel.
+          - Explain each tool accurately; do not invent features or pricing.
+          - Strong opening hook and clear follow CTA.
+          - No Markdown fences or extra text.
+          EOF
+          )
 
-      - name: Validate generated JSON
+          claude -p "$PROMPT" --output-format text \
+            --dangerously-skip-permissions \
+            > /tmp/english-response.txt
+
+      - name: Generate Hindi Reel
+        run: |
+          PROMPT=$(cat <<'EOF'
+          Read auto-generate/config.yml for the brand voice and niche.
+          Create an original Instagram Reel in HINDI for @aiforall.daily.
+          Topic: 5 useful AI websites: ChatGPT, Perplexity, Canva AI, Gamma,
+          and NotebookLM.
+
+          Return ONLY valid JSON, with this exact structure:
+          {
+            "handle": "@aiforall.daily",
+            "slides": [
+              {"kind":"hook","tag":"...","headline":"..."},
+              {"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"..."},
+              {"kind":"cta","emphasis":"...","body":"..."}
+            ]
+          }
+
+          Rules:
+          - Exactly 7 slides in the order shown.
+          - Write all spoken-style text in natural Hindi using Devanagari.
+          - Keep product names such as ChatGPT and Perplexity in English.
+          - Short, readable text suitable for a vertical Reel.
+          - Explain each tool accurately; do not invent features or pricing.
+          - Strong opening hook and clear follow CTA.
+          - No Markdown fences or extra text.
+          EOF
+          )
+
+          claude -p "$PROMPT" --output-format text \
+            --dangerously-skip-permissions \
+            > /tmp/hindi-response.txt
+
+      - name: Validate both Reel scripts
         run: |
           node <<'NODE'
           const fs = require('fs');
 
-          const raw = fs.readFileSync('/tmp/reel-response.txt', 'utf8');
-          const start = raw.indexOf('{');
-          const end = raw.lastIndexOf('}');
+          function parseAndValidate(input, output) {
+            const raw = fs.readFileSync(input, 'utf8');
+            const start = raw.indexOf('{');
+            const end = raw.lastIndexOf('}');
 
-          if (start < 0 || end <= start) {
-            throw new Error('Claude did not return valid JSON');
-          }
+            if (start < 0 || end <= start) {
+              throw new Error(`No JSON found in ${input}`);
+            }
 
-          const data = JSON.parse(raw.slice(start, end + 1));
+            const data = JSON.parse(raw.slice(start, end + 1));
 
-          if (!data.handle || !Array.isArray(data.slides)) {
-            throw new Error('Missing handle or slides');
-          }
+            if (data.handle !== '@aiforall.daily') {
+              throw new Error(`Incorrect handle in ${input}`);
+            }
 
-          if (data.slides.length < 3) {
-            throw new Error('At least 3 slides are required');
-          }
+            if (!Array.isArray(data.slides) || data.slides.length !== 7) {
+              throw new Error(`Expected exactly 7 slides in ${input}`);
+            }
 
-          const kinds = data.slides.map(s => s.kind);
+            const kinds = data.slides.map(slide => slide.kind);
+            if (kinds[0] !== 'hook' || kinds[6] !== 'cta') {
+              throw new Error(`Invalid first or last slide in ${input}`);
+            }
 
-          if (kinds[0] !== 'hook' || kinds[kinds.length - 1] !== 'cta') {
-            throw new Error('First slide must be hook and last must be cta');
-          }
+            if (kinds.slice(1, 6).some(kind => kind !== 'tool')) {
+              throw new Error(`Expected five tool slides in ${input}`);
+            }
 
-          if (kinds.some(k => !['hook', 'tool', 'cta'].includes(k))) {
-            throw new Error('Invalid slide type');
+            for (const slide of data.slides) {
+              for (const field of ['headline', 'emphasis', 'body']) {
+                if (field in slide && typeof slide[field] !== 'string') {
+                  throw new Error(`Invalid ${field} in ${input}`);
+                }
+              }
+            }
+
+            fs.writeFileSync(output, JSON.stringify(data, null, 2));
+            console.log(`Validated ${output}`);
           }
 
           fs.mkdirSync('remotion/out', { recursive: true });
-          fs.writeFileSync(
-            'remotion/generated-carousel.json',
-            JSON.stringify(data, null, 2)
-          );
-
-          console.log('Reel JSON validated successfully!');
-          console.log('Slides:', data.slides.length);
+          parseAndValidate('/tmp/english-response.txt',
+            'remotion/english-carousel.json');
+          parseAndValidate('/tmp/hindi-response.txt',
+            'remotion/hindi-carousel.json');
           NODE
 
       - name: Install Remotion dependencies
         working-directory: remotion
         run: npm install --no-audit --no-fund
 
-      - name: Render Instagram Reel
+      - name: Render English Reel
         working-directory: remotion
         run: |
-          npx remotion render \
-            src/index.tsx \
-            Reel \
-            out/reel.mp4 \
-            --props=./generated-carousel.json
+          npx remotion render src/index.tsx Reel \
+            out/english-reel.mp4 \
+            --props=./english-carousel.json
 
-      - name: Upload generated Reel
+      - name: Render Hindi Reel
+        working-directory: remotion
+        run: |
+          npx remotion render src/index.tsx Reel \
+            out/hindi-reel.mp4 \
+            --props=./hindi-carousel.json
+
+      - name: Upload both Reels
         uses: actions/upload-artifact@v4
         with:
-          name: instagram-reel
-          path: remotion/out/reel.mp4
+          name: ai-for-all-english-and-hindi-reels
+          path: |
+            remotion/out/english-reel.mp4
+            remotion/out/hindi-reel.mp4
           if-no-files-found: error
           retention-days: 7
