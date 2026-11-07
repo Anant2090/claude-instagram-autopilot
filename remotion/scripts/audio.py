@@ -13,8 +13,6 @@ def request(url, key, body=None):
         "Cartesia-Version": VERSION,
         "Content-Type": "application/json",
     }
-    if body is not None:
-        headers["Accept"] = "application/octet-stream"
     req = urllib.request.Request(
         url,
         data=json.dumps(body).encode("utf-8") if body is not None else None,
