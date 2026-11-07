@@ -1,4 +1,4 @@
-name: Generate English and Hindi Reels with Voice
+name: Generate English and Hindi Reels with Instagram Agent Skills
 
 on:
   workflow_dispatch:
@@ -8,9 +8,8 @@ permissions:
 
 jobs:
   generate:
-    # Use GitHub-hosted Linux runners; this repo has no registered self-hosted runner.
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
@@ -35,8 +34,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg espeak-ng
 
-      - name: Install audio dependencies
-        run: python -m pip install --upgrade pip numpy scipy
+      - name: Install Python audio dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy scipy
+
+      - name: Install pinned Instagram agent skills
+        run: |
+          git clone https://github.com/Jakeschincariol/instagram-agent-skill.git /tmp/instagram-agent-skill
+          git -C /tmp/instagram-agent-skill checkout d03c56bb598be770c60b201f94237e5d1a4268a6
+          mkdir -p .claude/skills "$HOME/.claude/instagram"
+          for skill in /tmp/instagram-agent-skill/skills/ig-*; do
+            cp -R "$skill" .claude/skills/
+          done
+          cp auto-generate/voice.md "$HOME/.claude/instagram/voice.md"
+          echo "Installed skills:"
+          find .claude/skills -maxdepth 2 -name SKILL.md -print
 
       - name: Check required secrets
         run: |
@@ -44,42 +57,67 @@ jobs:
           if [ -z "$CARTESIA_API_KEY" ] || [ -z "$CARTESIA_VOICE_ID" ]; then
             echo "Cartesia credentials missing; narration will use local eSpeak."
           else
-            echo "Cartesia credentials found; a non-TTS API preflight will run before synthesis."
+            echo "Cartesia credentials found; a non-TTS API preflight runs before synthesis."
           fi
 
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Generate English Reel script
+      - name: Generate English Reel with installed skills
         run: |
-          claude -p 'Read auto-generate/config.yml. Create an original English Instagram Reel for @aiforall.daily about ChatGPT, Perplexity, Canva AI, Gamma, and NotebookLM. Return ONLY JSON with this shape:
-          {"handle":"@aiforall.daily","narration":"A concise natural voiceover script, about 45 to 55 spoken words.","slides":[{"kind":"hook","tag":"...","headline":"..."},{"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"cta","emphasis":"FOLLOW","body":"..."}]}. Exactly 7 slides. Short readable on-screen text. Tool slides need accurate simple information in body, plus realistic prompt and concise illustrative result. Never claim a simulation is a real product screenshot or actual generated result. Narration speaks all five tools and ends with follow CTA. No Markdown.' --output-format text --dangerously-skip-permissions > /tmp/english-response.txt
+          claude -p 'Use the installed /ig-reel skill to create one original, accurate, high-retention English Instagram Reel for @aiforall.daily. Then apply /ig-human and /ig-caption guidance. Topic: five genuinely useful AI tools for students and working professionals; cover ChatGPT, Perplexity, Canva AI, Gamma, and NotebookLM. Do not claim current prices, plan limits, or features unless you can verify them from reliable current sources; if you cannot verify a claim, phrase it conservatively. Use the brand voice file. Run the available local hookscore.py, beats.py, humanize.py, detect.py, and caption.py tools where applicable. Target total narration length 45-55 spoken words so it fits the approximately 24-second composition. Return ONLY valid JSON with keys handle, hook, narration, caption, slides. slides must contain exactly 7 objects: one hook, five tool slides, one CTA. Shape: {"handle":"@aiforall.daily","hook":"spoken opening line","narration":"voiceover text","caption":"copy-ready caption with one CTA and up to five relevant hashtags","slides":[{"kind":"hook","tag":"...","headline":"..."},{"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"cta","emphasis":"FOLLOW","body":"..."}]}. Keep on-screen text short and readable. Each demoResult is illustrative simulated text, never imply it is a real product result. Narration must cover all five tools. No Markdown or text outside JSON.' --output-format text --dangerously-skip-permissions > /tmp/english-response.txt
 
-      - name: Generate Hindi Reel script
+      - name: Generate Hindi Reel with installed skills
         run: |
-          claude -p 'Read auto-generate/config.yml. Create an original natural Hindi Instagram Reel for @aiforall.daily about ChatGPT, Perplexity, Canva AI, Gamma, and NotebookLM. Return ONLY JSON with this shape:
-          {"handle":"@aiforall.daily","narration":"पूरा नैचुरल हिंदी वॉइसओवर, लगभग 45 से 55 बोले गए शब्द।","slides":[{"kind":"hook","tag":"...","headline":"..."},{"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"cta","emphasis":"FOLLOW","body":"..."}]}. Exactly 7 slides. Spoken narration must be natural Hindi in Devanagari; keep product names in English. Each tool slide needs accurate simple information, a practical prompt and a concise illustrative result. Do not present simulation as real product footage or verified output. End with a follow CTA. No Markdown.' --output-format text --dangerously-skip-permissions > /tmp/hindi-response.txt
+          claude -p 'Use the installed /ig-reel skill to create one original, natural Hindi Instagram Reel for @aiforall.daily. Apply /ig-human and /ig-caption guidance. Topic: five useful AI tools for students and working professionals; cover ChatGPT, Perplexity, Canva AI, Gamma, and NotebookLM. Do not invent prices, plan limits, statistics, or capabilities. Use natural spoken Hindi in Devanagari; retain product names in English. Use the brand voice file. Run local humanize.py, detect.py, and caption.py tools where applicable. Target 45-55 spoken words and keep sentences short enough for the approximately 24-second composition. Return ONLY valid JSON with keys handle, hook, narration, caption, slides. slides must contain exactly 7 objects: one hook, five tool slides, one CTA. Shape: {"handle":"@aiforall.daily","hook":"हिंदी में शुरुआती लाइन","narration":"पूरा नैचुरल हिंदी वॉइसओवर","caption":"हिंदी कैप्शन, एक CTA और ज़्यादा से ज़्यादा पाँच संबंधित हैशटैग","slides":[{"kind":"hook","tag":"...","headline":"..."},{"kind":"tool","n":1,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":2,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":3,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":4,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"tool","n":5,"headline":"...","emphasis":"...","body":"...","demoLabel":"...","demoPrompt":"...","demoResult":"..."},{"kind":"cta","emphasis":"FOLLOW","body":"..."}]}. Exactly 7 slides. Each demoResult is clearly illustrative simulation, not a real product result. Narration covers all five tools and ends with a follow CTA. No Markdown or text outside JSON.' --output-format text --dangerously-skip-permissions > /tmp/hindi-response.txt
 
-      - name: Validate scripts and attach optional real demo recordings
+      - name: Validate scripts and prepare text for quality checks
         run: |
           node <<'NODE'
           const fs = require('fs');
           const map = {1:'demos/chatgpt.mp4',2:'demos/perplexity.mp4',3:'demos/canva-ai.mp4',4:'demos/gamma.mp4',5:'demos/notebooklm.mp4'};
-          function parse(input, output) {
+          function parse(input, output, lang) {
             const raw=fs.readFileSync(input,'utf8'), start=raw.indexOf('{'), end=raw.lastIndexOf('}');
             if(start<0||end<=start) throw new Error('No JSON in '+input);
             const d=JSON.parse(raw.slice(start,end+1));
-            if(d.handle!=='@aiforall.daily'||typeof d.narration!=='string'||d.narration.trim().length<40) throw new Error('Invalid handle/narration '+input);
-            if(!Array.isArray(d.slides)||d.slides.length!==7) throw new Error('Expected 7 slides '+input);
-            if(d.slides[0].kind!=='hook'||d.slides[6].kind!=='cta'||d.slides.slice(1,6).some(s=>s.kind!=='tool'||!s.demoPrompt||!s.demoResult)) throw new Error('Invalid slide structure '+input);
+            if(d.handle!=='@aiforall.daily'||typeof d.narration!=='string'||d.narration.trim().length<40||typeof d.caption!=='string'||d.caption.trim().length<20) throw new Error('Missing handle, narration or caption: '+input);
+            if(!Array.isArray(d.slides)||d.slides.length!==7) throw new Error('Expected 7 slides: '+input);
+            if(d.slides[0].kind!=='hook'||d.slides[6].kind!=='cta'||d.slides.slice(1,6).some(s=>s.kind!=='tool'||!s.demoPrompt||!s.demoResult)) throw new Error('Invalid slide structure: '+input);
             for(const s of d.slides) if(s.kind==='tool'&&fs.existsSync('remotion/public/'+map[s.n])) s.demoVideo=map[s.n];
-            d.audioFile=output.includes('english')?'audio/english-mix.wav':'audio/hindi-mix.wav';
+            d.audioFile=lang==='en'?'audio/english-mix.wav':'audio/hindi-mix.wav';
             fs.mkdirSync('remotion/public/audio',{recursive:true});
             fs.mkdirSync('remotion/out',{recursive:true});
             fs.writeFileSync(output,JSON.stringify(d,null,2));
+            fs.writeFileSync('remotion/out/'+lang+'-narration.txt',d.narration);
+            fs.writeFileSync('remotion/out/'+lang+'-caption.txt',d.caption);
+            fs.writeFileSync('remotion/out/'+lang+'-hook.txt',d.hook||d.slides[0].headline||'');
           }
-          parse('/tmp/english-response.txt','remotion/english-carousel.json');
-          parse('/tmp/hindi-response.txt','remotion/hindi-carousel.json');
+          parse('/tmp/english-response.txt','remotion/english-carousel.json','en');
+          parse('/tmp/hindi-response.txt','remotion/hindi-carousel.json','hi');
+          NODE
+
+      - name: Run hook, timing, humanization and caption checks
+        run: |
+          SKILLS=.claude/skills
+          python "$SKILLS/ig-reel/hookscore.py" --hook "$(cat remotion/out/en-hook.txt)" | tee remotion/out/english-hook-score.txt
+          python "$SKILLS/ig-reel/beats.py" remotion/out/en-narration.txt --target 24 | tee remotion/out/english-beat-sheet.txt
+          for lang in en hi; do
+            python "$SKILLS/ig-human/humanize.py" "remotion/out/$lang-narration.txt" -o "remotion/out/$lang-narration-clean.txt" --report > "remotion/out/$lang-narration-humanizer.txt"
+            python "$SKILLS/ig-human/detect.py" "remotion/out/$lang-narration-clean.txt" > "remotion/out/$lang-narration-detection.txt"
+            python "$SKILLS/ig-human/humanize.py" "remotion/out/$lang-caption.txt" -o "remotion/out/$lang-caption-clean.txt" --report > "remotion/out/$lang-caption-humanizer.txt"
+            python "$SKILLS/ig-human/detect.py" "remotion/out/$lang-caption-clean.txt" > "remotion/out/$lang-caption-detection.txt"
+            python "$SKILLS/ig-caption/caption.py" "remotion/out/$lang-caption-clean.txt" > "remotion/out/$lang-caption-lint.txt"
+          done
+          node <<'NODE'
+          const fs=require('fs');
+          for(const lang of ['en','hi']){
+            const path=lang==='en'?'remotion/english-carousel.json':'remotion/hindi-carousel.json';
+            const d=JSON.parse(fs.readFileSync(path,'utf8'));
+            d.narration=fs.readFileSync('remotion/out/'+lang+'-narration-clean.txt','utf8').trim();
+            d.caption=fs.readFileSync('remotion/out/'+lang+'-caption-clean.txt','utf8').trim();
+            fs.writeFileSync(path,JSON.stringify(d,null,2));
+            fs.writeFileSync('remotion/out/'+lang+'-caption.txt',d.caption);
+          }
           NODE
 
       - name: Install Remotion dependencies
@@ -108,12 +146,18 @@ jobs:
           npx remotion render src/index.tsx Reel out/hindi-video.mp4 --props=./hindi-carousel.json --muted
           python scripts/finalize.py --video out/hindi-video.mp4 --audio public/audio/hindi-mix.wav --output out/hindi-reel.mp4
 
-      - name: Upload final English and Hindi Reels
+      - name: Upload videos, captions and quality reports
         uses: actions/upload-artifact@v4
         with:
-          name: ai-for-all-final-english-and-hindi-reels
+          name: ai-for-all-english-hindi-content-pack
           path: |
             remotion/out/english-reel.mp4
             remotion/out/hindi-reel.mp4
+            remotion/out/*-caption.txt
+            remotion/out/*-hook-score.txt
+            remotion/out/*-beat-sheet.txt
+            remotion/out/*-humanizer.txt
+            remotion/out/*-detection.txt
+            remotion/out/*-lint.txt
           if-no-files-found: error
           retention-days: 7

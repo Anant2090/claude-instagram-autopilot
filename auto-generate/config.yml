@@ -1,23 +1,24 @@
-
 # Instagram Autopilot Configuration
-# AI-powered faceless Instagram content generation
+# AI-powered content generation for @aiforall.daily
 
 niche: "AI tools, automation, technology and productivity"
 
 brand:
-  handle: "@YOUR_INSTAGRAM_USERNAME"
-  voice: "Engaging, simple, confident, educational and practical. Use powerful hooks, short sentences and actionable advice. Avoid hype and fake claims."
+  handle: "@aiforall.daily"
+  voice: "Clear, practical, curious and beginner-friendly. Explain technical ideas in simple language. Prefer useful demonstrations over hype. Keep sentences natural when spoken. Do not invent metrics, testimonials, pricing, features or results."
+  audience: "Students, working professionals, creators and small-business owners who want to use AI practically."
   pillars:
-    - "Best free AI tools and websites"
-    - "AI tools that save time and money"
-    - "ChatGPT tips and tricks"
-    - "AI automation tutorials"
-    - "Latest artificial intelligence developments"
+    - "Useful AI tools and websites"
     - "AI tools for students and professionals"
-    - "Practical business automation"
-    - "Underrated AI websites"
+    - "ChatGPT tips and practical workflows"
+    - "AI automation tutorials"
+    - "AI productivity and time-saving workflows"
+    - "AI news explained with verified context"
+    - "Beginner-friendly AI concepts"
+    - "Honest tool comparisons"
 
 cta:
+  default: "Follow @aiforall.daily for practical AI tools and tutorials."
   keyword: "AI"
   deliverable: "Free AI tools collection and automation guide"
 
@@ -25,11 +26,9 @@ cadence:
   timezone: "Asia/Kolkata"
   slots_per_day: 1
 
-# Content requirements:
-# Create original, educational and engaging content.
-# Use strong hooks in the first 3 seconds.
-# Create vertical 9:16 Instagram Reels.
-# Keep videos concise and visually engaging.
-# Include captions, subtitles and a clear CTA.
-# Never invent statistics, facts or results.
-# Require human approval before publishing.
+guardrails:
+  - "Human approval is required before publishing."
+  - "Never invent statistics, prices, capabilities, testimonials or outcomes."
+  - "Label simulated demos as illustrative simulations."
+  - "Verify time-sensitive product claims before using them."
+  - "Model content formats, never copy another creator's script or video."
