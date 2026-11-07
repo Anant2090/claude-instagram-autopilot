@@ -2,13 +2,22 @@ name: Generate English and Hindi Reels with Voice
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "Use a self-hosted Linux runner to avoid GitHub-hosted egress issues"
+        type: choice
+        required: true
+        default: self-hosted-linux
+        options:
+          - self-hosted-linux
+          - github-hosted
 
 permissions:
   contents: read
 
 jobs:
   generate:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner == 'self-hosted-linux' && fromJSON('["self-hosted","linux","x64"]') || 'ubuntu-latest' }}
     timeout-minutes: 45
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -16,6 +25,12 @@ jobs:
       CARTESIA_VOICE_ID: ${{ secrets.CARTESIA_VOICE_ID }}
 
     steps:
+      - name: Show selected runner
+        run: |
+          echo "Runner selection: ${{ inputs.runner }}"
+          echo "OS: $(uname -s 2>/dev/null || echo Windows)"
+          echo "A self-hosted option requires a registered Linux x64 runner with ffmpeg, Python 3.11, Node 20, and sudo apt access."
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
