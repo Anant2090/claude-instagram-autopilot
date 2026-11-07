@@ -2,22 +2,14 @@ name: Generate English and Hindi Reels with Voice
 
 on:
   workflow_dispatch:
-    inputs:
-      runner:
-        description: "Use a self-hosted Linux runner to avoid GitHub-hosted egress issues"
-        type: choice
-        required: true
-        default: self-hosted-linux
-        options:
-          - self-hosted-linux
-          - github-hosted
 
 permissions:
   contents: read
 
 jobs:
   generate:
-    runs-on: ${{ inputs.runner == 'self-hosted-linux' && fromJSON('["self-hosted","linux","x64"]') || 'ubuntu-latest' }}
+    # Use GitHub-hosted Linux runners; this repo has no registered self-hosted runner.
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -25,12 +17,6 @@ jobs:
       CARTESIA_VOICE_ID: ${{ secrets.CARTESIA_VOICE_ID }}
 
     steps:
-      - name: Show selected runner
-        run: |
-          echo "Runner selection: ${{ inputs.runner }}"
-          echo "OS: $(uname -s 2>/dev/null || echo Windows)"
-          echo "A self-hosted option requires a registered Linux x64 runner with ffmpeg, Python 3.11, Node 20, and sudo apt access."
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -47,7 +33,7 @@ jobs:
       - name: Install system audio tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg espeak-ng
 
       - name: Install audio dependencies
         run: python -m pip install --upgrade pip numpy scipy
@@ -55,8 +41,11 @@ jobs:
       - name: Check required secrets
         run: |
           test -n "$ANTHROPIC_API_KEY" || (echo "Missing ANTHROPIC_API_KEY secret" && exit 1)
-          test -n "$CARTESIA_API_KEY" || (echo "Missing CARTESIA_API_KEY secret" && exit 1)
-          test -n "$CARTESIA_VOICE_ID" || (echo "Missing CARTESIA_VOICE_ID secret" && exit 1)
+          if [ -z "$CARTESIA_API_KEY" ] || [ -z "$CARTESIA_VOICE_ID" ]; then
+            echo "Cartesia credentials missing; narration will use local eSpeak."
+          else
+            echo "Cartesia credentials found; a non-TTS API preflight will run before synthesis."
+          fi
 
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
@@ -99,7 +88,7 @@ jobs:
 
       - name: Generate English narration and mastered audio
         run: |
-          python remotion/scripts/audio.py --input remotion/english-carousel.json --output remotion/public/audio/english-voice.wav --language en
+          python remotion/scripts/audio.py --input remotion/english-carousel.json --output remotion/public/audio/english-voice.wav --language en --fallback-espeak
           python remotion/scripts/mix.py --voice remotion/public/audio/english-voice.wav --output remotion/public/audio/english-mix.wav
 
       - name: Render English video and finalize audio
@@ -110,7 +99,7 @@ jobs:
 
       - name: Generate Hindi narration and mastered audio
         run: |
-          python remotion/scripts/audio.py --input remotion/hindi-carousel.json --output remotion/public/audio/hindi-voice.wav --language hi
+          python remotion/scripts/audio.py --input remotion/hindi-carousel.json --output remotion/public/audio/hindi-voice.wav --language hi --fallback-espeak
           python remotion/scripts/mix.py --voice remotion/public/audio/hindi-voice.wav --output remotion/public/audio/hindi-mix.wav
 
       - name: Render Hindi video and finalize audio
