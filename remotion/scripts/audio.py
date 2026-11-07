@@ -1,11 +1,36 @@
 #!/usr/bin/env python3
-"""Generate Cartesia narration as raw PCM WAV, following the known-working bytes API path."""
+"""Generate Cartesia narration and diagnose API-edge connectivity failures."""
 import argparse, json, os, urllib.error, urllib.request, wave
 from pathlib import Path
 
 API = "https://api.cartesia.ai"
 VERSION = "2024-11-13"
 MODEL = "sonic-3.5"
+
+def request(url, key, body=None):
+    headers = {
+        "X-API-Key": key,
+        "Cartesia-Version": VERSION,
+        "Content-Type": "application/json",
+    }
+    if body is not None:
+        headers["Accept"] = "application/octet-stream"
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8") if body is not None else None,
+        headers=headers,
+        method="POST" if body is not None else "GET",
+    )
+    return urllib.request.urlopen(req, timeout=180)
+
+def report_http_error(label, error):
+    body = error.read().decode("utf-8", errors="replace")
+    print(f"{label}: HTTP {error.code}")
+    for header in ("server", "via", "x-cache", "x-amz-cf-id", "x-amz-cf-pop"):
+        value = error.headers.get(header)
+        if value:
+            print(f"{header}: {value}")
+    print(f"Response body: {body[:2500]}")
 
 def main():
     p=argparse.ArgumentParser()
@@ -19,6 +44,20 @@ def main():
     if not isinstance(transcript,str) or not transcript.strip():
         raise ValueError("Input JSON must contain a non-empty narration string.")
 
+    # Check the authenticated API host separately from the TTS POST.
+    try:
+        with request(API+"/voices", key) as health:
+            print(f"Cartesia API preflight: HTTP {health.status}")
+            health.read(256)
+    except urllib.error.HTTPError as e:
+        report_http_error("Cartesia API preflight failed", e)
+        raise RuntimeError(
+            "Cartesia's API host rejected the simple /voices request. "
+            "This is an API-edge/network/account-access issue, not a narration payload issue."
+        ) from e
+    except Exception as e:
+        raise RuntimeError(f"Could not reach Cartesia API preflight: {type(e).__name__}: {e}") from e
+
     body={
         "model_id":MODEL,
         "transcript":transcript,
@@ -26,24 +65,12 @@ def main():
         "language":a.language,
         "output_format":{"container":"raw","encoding":"pcm_s16le","sample_rate":44100},
     }
-    req=urllib.request.Request(
-        API+"/tts/bytes",
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "X-API-Key":key,
-            "Cartesia-Version":VERSION,
-            "Content-Type":"application/json",
-            "Accept":"application/octet-stream",
-        },
-        method="POST",
-    )
     try:
-        with urllib.request.urlopen(req,timeout=180) as res:
+        with request(API+"/tts/bytes", key, body) as res:
             pcm=res.read()
-            print(f"Cartesia response: HTTP {res.status}; received {len(pcm)} audio bytes")
+            print(f"Cartesia TTS response: HTTP {res.status}; received {len(pcm)} audio bytes")
     except urllib.error.HTTPError as e:
-        details=e.read().decode("utf-8",errors="replace")
-        print(f"Cartesia HTTP {e.code} response: {details[:4000]}")
+        report_http_error("Cartesia TTS request failed", e)
         raise
 
     if not pcm:
@@ -58,7 +85,6 @@ def main():
         w.setsampwidth(2)
         w.setframerate(44100)
         w.writeframes(pcm)
-    # The current Reel composition does not consume word-level timestamps.
     out.with_suffix(".words.json").write_text("[]",encoding="utf-8")
     print(f"Cartesia audio written: {len(pcm)/88200:.2f}s")
 
